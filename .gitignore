@@ -1,1 +1,25 @@
-node_modules
+# Node.js (frontend)
+node_modules/
+dist/
+build/
+.env
+
+# Java / Spring Boot (backend)
+backend/target/
+*.log
+*.class
+*.jar
+*.war
+
+# Eclipse specific files
+*.classpath
+*.project
+*.settings/
+
+# IntelliJ/VSCode (optional, if you use them)
+.idea/
+.vscode/
+
+# OS specific files
+.DS_Store
+Thumbs.db

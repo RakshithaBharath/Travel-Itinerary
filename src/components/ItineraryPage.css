@@ -1,0 +1,8 @@
+.itinerary-background {
+  background-image: url("https://png.pngtree.com/background/20230410/original/pngtree-travel-background-illustration-postcard-picture-image_2385032.jpg");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  padding: 2rem;
+  border-radius: 10px;
+}

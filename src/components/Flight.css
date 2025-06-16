@@ -1,0 +1,17 @@
+@keyframes slideIn {
+  from { transform: translateY(30%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.flightPage {
+  padding: 2rem;
+  background: linear-gradient(120deg, #f3e5f5, #e1bee7);
+  min-height: 100vh;
+  animation: gradientAnimation 20s infinite;
+}
+
+.flightCard {
+  border-radius: 20px;
+  transition: 0.3s;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
