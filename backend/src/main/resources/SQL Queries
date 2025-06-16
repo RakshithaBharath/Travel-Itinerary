@@ -1,0 +1,272 @@
+-- Sequence for UserAccount PK
+CREATE SEQUENCE useraccount_seq START WITH 1 INCREMENT BY 1;
+
+-- UserAccount Table
+CREATE TABLE UserAccount (
+    user_id NUMBER PRIMARY KEY,
+    name VARCHAR2(100) NOT NULL,
+    email VARCHAR2(150) UNIQUE NOT NULL,
+    phone VARCHAR2(20),
+    sex VARCHAR2(10),
+    preferred_currency VARCHAR2(10),
+    preferred_language VARCHAR2(10),
+    travel_frequent NUMBER(1) DEFAULT 0, -- Oracle has no BOOLEAN, use NUMBER(1)
+    default_location VARCHAR2(100),
+    profile_picture VARCHAR2(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Trigger to auto-increment user_id
+CREATE OR REPLACE TRIGGER trg_useraccount_id
+BEFORE INSERT ON UserAccount
+FOR EACH ROW
+BEGIN
+  IF :NEW.user_id IS NULL THEN
+    SELECT useraccount_seq.NEXTVAL INTO :NEW.user_id FROM dual;
+  END IF;
+  :NEW.updated_at := CURRENT_TIMESTAMP;
+END;
+
+
+------------------------------------
+
+-- Sequence for UserAuth PK
+CREATE SEQUENCE userauth_seq START WITH 1 INCREMENT BY 1;
+
+-- UserAuth Table
+CREATE TABLE UserAuth (
+    user_auth_id NUMBER PRIMARY KEY,
+    user_id NUMBER NOT NULL,
+    provider VARCHAR2(50) NOT NULL,
+    provider_user_id VARCHAR2(200) NOT NULL,
+    password_hash VARCHAR2(255),
+    salt VARCHAR2(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_userauth_user FOREIGN KEY (user_id) REFERENCES UserAccount(user_id)
+);
+
+-- Trigger to auto-increment user_auth_id
+CREATE OR REPLACE TRIGGER trg_userauth_id
+BEFORE INSERT ON UserAuth
+FOR EACH ROW
+BEGIN
+  IF :NEW.user_auth_id IS NULL THEN
+    SELECT userauth_seq.NEXTVAL INTO :NEW.user_auth_id FROM dual;
+  END IF;
+END;
+/
+
+------------------------------------
+
+-- ExternalProvider Table
+CREATE TABLE ExternalProvider (
+    provider_id NUMBER PRIMARY KEY,
+    name VARCHAR2(50) UNIQUE NOT NULL,
+    config CLOB -- Oracle doesn't have JSON type, use CLOB to store JSON as text
+);
+
+-- Sequence and trigger for ExternalProvider
+CREATE SEQUENCE externalprovider_seq START WITH 1 INCREMENT BY 1;
+
+CREATE OR REPLACE TRIGGER trg_externalprovider_id
+BEFORE INSERT ON ExternalProvider
+FOR EACH ROW
+BEGIN
+  IF :NEW.provider_id IS NULL THEN
+    SELECT externalprovider_seq.NEXTVAL INTO :NEW.provider_id FROM dual;
+  END IF;
+END;
+/
+
+
+-- Sequence for Role PK
+CREATE SEQUENCE role_seq START WITH 1 INCREMENT BY 1;
+
+-- Role Table
+CREATE TABLE Role (
+    role_id NUMBER PRIMARY KEY,
+    role_name VARCHAR2(50) UNIQUE NOT NULL
+);
+
+-- Trigger for Role PK auto-increment
+CREATE OR REPLACE TRIGGER trg_role_id
+BEFORE INSERT ON Role
+FOR EACH ROW
+BEGIN
+  IF :NEW.role_id IS NULL THEN
+    SELECT role_seq.NEXTVAL INTO :NEW.role_id FROM dual;
+  END IF;
+END;
+/
+
+--------------------------------------------------------
+
+-- User_Role Mapping Table
+CREATE TABLE UserRole (
+    user_role_id NUMBER PRIMARY KEY,
+    user_id NUMBER NOT NULL,
+    role_id NUMBER NOT NULL,
+    CONSTRAINT fk_userrole_user FOREIGN KEY (user_id) REFERENCES UserAccount(user_id),
+    CONSTRAINT fk_userrole_role FOREIGN KEY (role_id) REFERENCES Role(role_id)
+);
+
+-- Sequence and trigger for UserRole PK
+CREATE SEQUENCE userrole_seq START WITH 1 INCREMENT BY 1;
+
+CREATE OR REPLACE TRIGGER trg_userrole_id
+BEFORE INSERT ON UserRole
+FOR EACH ROW
+BEGIN
+  IF :NEW.user_role_id IS NULL THEN
+    SELECT userrole_seq.NEXTVAL INTO :NEW.user_role_id FROM dual;
+  END IF;
+END;
+/
+
+
+--Ittinary tables and sequence and Triggers
+CREATE TABLE trips (
+  id NUMBER PRIMARY KEY,
+  user_id NUMBER,
+  title VARCHAR2(255),
+  start_date DATE,
+  end_date DATE,
+  notes CLOB,
+  travelers NUMBER,
+  budget NUMBER(10, 2),  -- Numeric with 2 decimals
+  country_code VARCHAR2(10),
+  language VARCHAR2(10),
+  CONSTRAINT fk_trips_user FOREIGN KEY (user_id) REFERENCES user_account(id)
+);
+
+CREATE SEQUENCE trip_seq START WITH 1 INCREMENT BY 1;
+
+
+CREATE TABLE days (
+  id NUMBER PRIMARY KEY,
+  trip_id NUMBER,
+  date DATE,
+  title VARCHAR2(255),
+  notes CLOB,
+  transport_mode VARCHAR2(50),
+  meals VARCHAR2(255),
+  cost_estimate NUMBER(10, 2),
+  CONSTRAINT fk_days_trip FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
+);
+
+
+
+CREATE TABLE locations (
+  id NUMBER PRIMARY KEY,
+  day_id NUMBER REFERENCES days(id),
+  name VARCHAR2(500),
+  latitude NUMBER(10, 7),
+  longitude NUMBER(10, 7),
+  visit_duration VARCHAR2(10),
+  time_slot VARCHAR2(50),
+  priority NUMBER(1),
+  booking_info VARCHAR2(500),
+  photos_links VARCHAR2(1000),
+
+  -- Weather Fields
+  weather_condition VARCHAR2(100), -- e.g., "Clear sky"
+  temperature NUMBER(5, 2), -- in Celsius
+  weather_icon VARCHAR2(10), -- e.g., "01d"
+  weather_datetime TIMESTAMP -- API weather timestamp
+);
+
+ALTER TABLE locations
+ADD CONSTRAINT fk_locations_day FOREIGN KEY (day_id) REFERENCES days(id) ON DELETE CASCADE;
+
+----------------------------------------------------------------------------------------
+
+-- Sequence for ID generation
+CREATE SEQUENCE BOOKED_TRIPS_SEQ START WITH 1 INCREMENT BY 1;
+
+-- Table Definition
+CREATE TABLE BOOKED_TRIPS (
+  ID NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  USER_ID NUMBER NOT NULL,
+  DESTINATION VARCHAR2(255),
+  DAYS NUMBER,
+  TRAVEL_TYPE VARCHAR2(50),
+  PREFERENCES VARCHAR2(500),
+  BUDGET NUMBER,
+  CURRENCY VARCHAR2(10),
+  ITINERARY CLOB,
+  CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    CONSTRAINT FK_BOOKED_TRIPS_USER FOREIGN KEY (USER_ID) REFERENCES USERACCOUNT(USER_ID)
+);
+
+CREATE TABLE destinations (
+    id NUMBER PRIMARY KEY,
+    name VARCHAR2(100) NOT NULL,
+    country VARCHAR2(100) NOT NULL,
+    description VARCHAR2(500),
+    image_url VARCHAR2(500) NOT NULL,
+    avg_package_price_inr NUMBER(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create sequence for id
+CREATE SEQUENCE destinations_seq
+  START WITH 1
+  INCREMENT BY 1
+  NOCACHE
+  NOCYCLE;
+
+-- Create trigger to auto-assign id from sequence before insert
+CREATE OR REPLACE TRIGGER destinations_bir
+BEFORE INSERT ON destinations
+FOR EACH ROW
+BEGIN
+  IF :NEW.id IS NULL THEN
+    SELECT destinations_seq.NEXTVAL INTO :NEW.id FROM dual;
+  END IF;
+END;
+
+INSERT ALL
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Paris', 'France', 'The city of love and lights, famous for Eiffel Tower.', 'https://yourcdn.com/images/paris.jpg', 120000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Bali', 'Indonesia', 'Tropical paradise with beaches and temples.', 'https://yourcdn.com/images/bali.jpg', 90000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Tokyo', 'Japan', 'Vibrant city with amazing culture and food.', 'https://yourcdn.com/images/tokyo.jpg', 110000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('New York', 'USA', 'The city that never sleeps with iconic landmarks.', 'https://yourcdn.com/images/newyork.jpg', 130000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Rome', 'Italy', 'Ancient city full of history, art, and architecture.', 'https://yourcdn.com/images/rome.jpg', 115000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Sydney', 'Australia', 'Famous for its opera house and beautiful harbour.', 'https://yourcdn.com/images/sydney.jpg', 125000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Dubai', 'UAE', 'Luxury city with modern architecture and desert safaris.', 'https://yourcdn.com/images/dubai.jpg', 100000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('London', 'UK', 'Historic city with rich culture and royal heritage.', 'https://yourcdn.com/images/london.jpg', 120000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Barcelona', 'Spain', 'Known for its art, architecture, and beaches.', 'https://yourcdn.com/images/barcelona.jpg', 95000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Singapore', 'Singapore', 'Modern city-state with gardens and skyscrapers.', 'https://yourcdn.com/images/singapore.jpg', 105000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Istanbul', 'Turkey', 'A city bridging Europe and Asia with rich history.', 'https://yourcdn.com/images/istanbul.jpg', 90000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Cape Town', 'South Africa', 'Known for Table Mountain and stunning coastlines.', 'https://yourcdn.com/images/capetown.jpg', 95000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Bangkok', 'Thailand', 'Bustling city famous for street food and temples.', 'https://yourcdn.com/images/bangkok.jpg', 85000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Amsterdam', 'Netherlands', 'Famous for canals, art museums, and cycling.', 'https://yourcdn.com/images/amsterdam.jpg', 100000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Machu Picchu', 'Peru', 'Ancient Incan city with breathtaking mountain views.', 'https://yourcdn.com/images/machu_picchu.jpg', 115000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Santorini', 'Greece', 'Iconic island with white buildings and blue domes.', 'https://yourcdn.com/images/santorini.jpg', 105000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Vancouver', 'Canada', 'City with beautiful nature, mountains and ocean.', 'https://yourcdn.com/images/vancouver.jpg', 110000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Hawaii', 'USA', 'Paradise islands known for beaches and volcanoes.', 'https://yourcdn.com/images/hawaii.jpg', 120000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Prague', 'Czech Republic', 'Fairytale city with historic castles and squares.', 'https://yourcdn.com/images/prague.jpg', 90000)
+  INTO destinations (name, country, description, image_url, avg_package_price_inr) VALUES ('Kyoto', 'Japan', 'City of traditional temples, gardens, and culture.', 'https://yourcdn.com/images/kyoto.jpg', 100000)
+SELECT * FROM dual;
+
+COMMIT;
+
+CREATE SEQUENCE travel_bookings_seq START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+
+CREATE TABLE travel_bookings (
+    id NUMBER PRIMARY KEY,
+    
+    user_id NUMBER NOT NULL,
+    destination_id NUMBER NOT NULL,
+    
+    booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    
+    CONSTRAINT fk_travelbookings_user FOREIGN KEY (user_id)
+        REFERENCES useraccount(user_id),
+        
+    CONSTRAINT fk_travelbookings_destination FOREIGN KEY (destination_id)
+        REFERENCES destinations(id)
+);
+
+
+
